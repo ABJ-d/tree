@@ -181,9 +181,10 @@ flowchart LR
 level: 1
 layout: center
 ---
-# Showcase
+# Show, don't tell
 **Live demonstrations** — each built on the same three-package stack
 
+→ 🖱️ Screen-space picking  
 → 🎬 Camera path interpolation  
 → 🎯 Object animation · PoseTrack  
 → ✨ Post-FX pipeline · shaders  
