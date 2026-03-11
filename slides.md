@@ -193,6 +193,67 @@ layout: center
 layout: center
 hideInToc: true
 ---
+# Screen-space picking
+Hover any object — no GPU readback, no raycasting. Pure screen-space proximity.
+<PickingDemo />
+
+---
+layout: center
+hideInToc: true
+---
+# How picking works
+```js
+// 🗄️ cache pvMatrix once per frame — shared across all objects
+const pv = p.pvMatrix()
+
+models.forEach(m => {
+  p.push()
+  p.translate(m.position)
+
+  // params reused for both picking and overlay drawing
+  const params = { pvMatrix: pv, size: m.size * 2.5 }
+
+  // projects model origin → screen, tests mouse distance < size/2
+  const hit = p.mousePicking(params)
+
+  hit ? p.emissiveMaterial(1, 1, 1) : p.specularMaterial(m.color)
+  p.sphere(m.size)
+
+  // bullsEye overlay drawn at the same projected screen position
+  p.stroke(hit ? 'yellow' : 'steelblue')
+  p.bullsEye(params)   // reuses the same pvMatrix — no re-projection
+
+  p.pop()
+})
+```
+
+> `size` in `params` is **world-space** — internally divided by `pixelRatio(worldPos)` so the hit region shrinks with distance, matching the rendered object size on screen.  
+> One `pvMatrix()` call per frame — not per object.
+
+---
+layout: center
+hideInToc: true
+---
+# Current limits · future work
+```js
+// ✅ what works today — screen-space proximity
+const hit = p.mousePicking({ pvMatrix: pv, size: m.size * 2.5 })
+
+// size * 2.5 is a heuristic — works well for convex shapes
+// but over-selects on elongated or concave geometry
+```
+
+> **Current approach** — project object origin to screen, test mouse within a radius.  
+> Fast, zero GPU overhead, good enough for most interactive scenes.
+
+> **Future work** — precise picking via GL buffers:  
+> render object IDs into an offscreen framebuffer, read the pixel under the cursor.  
+> Sub-pixel accurate, handles any geometry — planned as a standalone module.
+
+---
+layout: center
+hideInToc: true
+---
 # Smooth camera paths
 Record keyframes. Play back a spline-interpolated fly-through.
 <TreeSketch />
