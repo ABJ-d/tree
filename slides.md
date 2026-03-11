@@ -39,26 +39,23 @@ hideInToc: true
 ---
 level: 1
 ---
-# Arch
-Three focused packages. Clean dependency direction. Each layer replaceable.
+# Architecture
+Three packages. One dependency direction. Each layer independently deployable.
 
 ```mermaid
-flowchart TB
+flowchart LR
   A["⚡ WebGL · WebGL2 · WebGPU"]
   B["🎨 p5.js v2"]
-
   subgraph ws["📦 npm workspace"]
     T["🌳 @nakednous/tree\nmath · visibility · animation"]
     U["🎛️ @nakednous/ui\nsliders · transport"]
     P["🌉 p5.tree.js\nbridge · pipe · HUD"]
   end
-
   subgraph apps["🚀 Applications"]
     V["🔬 rendering viz"]
     G["🎮 game engine"]
     X["🖥️ any renderer · headless"]
   end
-
   A --> B --> P
   T --> P
   U --> P
@@ -66,7 +63,7 @@ flowchart TB
   T --> X
 ```
 
-> `deps/tree` and `deps/ui` never import from the bridge — dependency arrow never reverses.
+> `@nakednous/tree` runs anywhere — browser, server, or headless. `deps` never import from `p5.tree.js`.
 
 ---
 layout: center
@@ -181,7 +178,7 @@ flowchart LR
 level: 1
 layout: center
 ---
-# Show, don't tell
+# Showcase
 **Live demonstrations** — each built on the same three-package stack
 
 → 🖱️ Screen-space picking  
@@ -192,17 +189,15 @@ layout: center
 
 ---
 layout: center
-hideInToc: true
 ---
-# Screen-space picking
+## Screen-space picking
 Hover any object — no GPU readback, no raycasting. Pure screen-space proximity.
 <PickingDemo />
 
 ---
 layout: center
-hideInToc: true
 ---
-# How picking works
+### How picking works
 ```js
 // 🗄️ cache pvMatrix once per frame — shared across all objects
 const pv = p.pvMatrix()
@@ -233,9 +228,8 @@ models.forEach(m => {
 
 ---
 layout: center
-hideInToc: true
 ---
-# Current limits · future work
+### Current limits · future work
 ```js
 // ✅ what works today — screen-space proximity
 const hit = p.mousePicking({ pvMatrix: pv, size: m.size * 2.5 })
@@ -253,9 +247,8 @@ const hit = p.mousePicking({ pvMatrix: pv, size: m.size * 2.5 })
 
 ---
 layout: center
-hideInToc: true
 ---
-# Smooth camera paths
+## Smooth camera paths
 Record keyframes. Play back a spline-interpolated fly-through.
 <TreeSketch />
 
@@ -263,7 +256,7 @@ Record keyframes. Play back a spline-interpolated fly-through.
 layout: center
 ---
 
-## camera path — setup
+### camera path — setup
 
 ```js
 p.setup = function () {
@@ -286,7 +279,7 @@ p.setup = function () {
 layout: center
 ---
 
-## camera path — draw & keys
+### camera path — draw & keys
 
 ```js
 p.draw = function () {
@@ -305,9 +298,8 @@ p.keyPressed = function () {
 
 ---
 layout: center
-hideInToc: true
 ---
-# Animating objects in 3D space
+## Animating objects in 3D space
 TRS keyframes — position · rotation · scale — interpolated every frame.
 <PoseTrackDemo />
 
@@ -315,7 +307,7 @@ TRS keyframes — position · rotation · scale — interpolated every frame.
 layout: center
 ---
 
-## PoseTrack — setup
+### PoseTrack — setup
 
 ```js
 p.setup = function () {
@@ -347,7 +339,7 @@ p.setup = function () {
 layout: center
 ---
 
-## PoseTrack — draw
+### PoseTrack — draw
 
 ```js
 p.draw = function () {
@@ -370,17 +362,15 @@ p.draw = function () {
 
 ---
 layout: center
-hideInToc: true
 ---
-# Post-processing as a pipeline
+## Post-processing as a pipeline
 Scene to framebuffer. GLSL filter as a live-tunable pass.
 <FxPipeDemo />
 
 ---
 layout: center
-hideInToc: true
 ---
-# Writing a GLSL 3 filter
+### Writing a GLSL 3 filter
 
 ```glsl
 #version 300 es
@@ -412,9 +402,8 @@ void main() {
 
 ---
 layout: center
-hideInToc: true
 ---
-# `createUniformUI` — push vs pull
+### `createUniformUI` — push vs pull
 
 ```js
 // ── pull pattern — no target, you read each frame ────────────────────
@@ -444,17 +433,15 @@ p.pipe(layer, enabled.chroma ? [chromaFilter] : [])
 
 ---
 layout: center
-hideInToc: true
 ---
-# Frustum culling — live
+## Frustum culling
 Classify every object against the view frustum every frame. Zero allocations.
 <VisibilityDemo />
 
 ---
 layout: center
-hideInToc: true
 ---
-# Visibility query — one call per object
+### Visibility query — one call per object
 
 ```js
 // Sphere
@@ -480,9 +467,8 @@ else if (m.visibility === p5.Tree.SEMIVISIBLE) { p.noFill();      p.stroke(m.col
 
 ---
 layout: center
-hideInToc: true
 ---
-# Frustum visualisation + HUD inset
+### Frustum visualisation + HUD inset
 
 ```js
 // Cache e and pm once per frame — reused by viewFrustum and visibility
@@ -510,10 +496,104 @@ p.endHUD()
 > cache them once, pass everywhere. Two cameras, one canvas.
 
 ---
+level: 1
+---
+# Roadmap
+Game engine as a progressive layer — each system maps to what already exists.
+
+```mermaid
+flowchart TB
+  subgraph now["✅ today"]
+    direction TB
+    A["🖱️ picking"]
+    B["👁️ visibility · frustum"]
+    C["🎬 PoseTrack · camera paths"]
+    D["✨ pipe · post-FX"]
+    E["🎛️ uniform UI · HUD"]
+  end
+  subgraph next["🔜 next"]
+    direction TB
+    F["🌐 scene graph · node registration"]
+    G["💀 skeletal rigs · blend trees"]
+    H["🎯 GL buffer picking"]
+  end
+  subgraph future["🔭 future"]
+    direction TB
+    I["⚙️ physics — Rapier · Cannon"]
+    J["🌑 shadow maps · multi-pass"]
+    K["🕹️ game-jam courses"]
+  end
+  now --> next --> future
+```
+
+---
+layout: center
+---
+## Scene graph
+
+Declare a parent. Let the visitor do the rest.
+
+```js
+// A node is anything with a pose + optional hooks — duck-typed from PoseTrack
+const box = {
+  pos: [0, 50, 0], rot: [0,0,0,1], scl: [1,1,1],
+  visit(p) { p.box(40) }        // override to draw anything
+}
+const child = {
+  pos: [0, 60, 0], rot: [0,0,0,1], scl: [0.5,0.5,0.5],
+  parent: box,                   // declare relationship — no manual push/pop
+  visit(p) { p.sphere(20) }
+}
+
+// register once — scene graph handles traversal every frame
+p.addNode(box)
+p.addNode(child)
+
+p.render(box)   // applies applyPose + visit() depth-first on box and its subtree
+```
+
+> See **nub** ([doi:10.5334/jors.477](https://doi.org/10.5334/jors.477)):  
+> nodes declare a `parent`, a visitor walks the tree — `applyPose` + `visit()` per node, depth-first.  
+> Same duck-typed pose contract as `PoseTrack`. Camera nodes, lights, and geometry all register the same way.
+
+---
+layout: center
+---
+## AI use — current and ongoing
+Much work remains. AI is a tool, not an author.
+
+**Used so far**
+- Porting global-mode sketches → Vue instance-mode components for this presentation
+- JSDoc comments and code organisation in the already-implemented libs
+
+**Ongoing design**
+> Architecture, API decisions, math, and pedagogy are human-authored.  
+> AI assists with translation and boilerplate — and that boundary is kept explicit.
+
+**Concerns**
+> Prefer open-source models and self-hostable tools where possible.  
+> Proprietary AI dependencies carry sustainability and adoption risks for research and teaching software.
+
+---
+layout: center
+---
+# References
+Sources cited throughout — surveying cutting-edge authoring tools is ongoing.
+
+<carbon-logo-github class="inline" /> [github.com/VisualComputing/p5.tree](https://github.com/VisualComputing/p5.tree)
+
+📄 Charalambos JP (2025) — **nub: A Rendering and Interaction Library for Visual Computing in Processing**  
+Journal of Open Research Software · [doi:10.5334/jors.477](https://doi.org/10.5334/jors.477)
+
+🎨 [p5js.org](https://p5js.org) — p5.js v2 · WebGL renderer · Strands · Framebuffer
+
+⚡ [rapier.rs](https://rapier.rs) — Rapier physics · Apache 2.0 · `@dimforge/rapier3d`
+
+💀 [github.com/VAST-AI-Research/UniRig](https://github.com/VAST-AI-Research/UniRig) — UniRig · AI-based auto-rigging · SIGGRAPH 2025
+
+---
 layout: center
 hideInToc: true
 ---
-
 # Thank you 🙏
-
 ### Questions? 💡
