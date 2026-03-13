@@ -4,10 +4,10 @@ import { onMounted, onUnmounted, ref, reactive } from 'vue'
 import p5 from 'p5'
 import 'p5.tree'
 
-const container  = ref(null)
-const enabled    = reactive({ chroma: false })
+const container = ref(null)
+const enabled   = reactive({ chroma: false })
 let p5Instance
-let uiSceneRef = null
+let uiSceneRef  = null
 let uiChromaRef = null
 
 const toggle = (key) => {
@@ -17,27 +17,21 @@ const toggle = (key) => {
 
 const chromaFrag = `#version 300 es
 precision mediump float;
-
 uniform sampler2D tex0;
 uniform float strength;  // RGB split radius
 uniform float vignette;  // falloff intensity
-
 in  vec2 vTexCoord;
 out vec4 outColor;
-
 void main() {
   vec2 uv  = vTexCoord;
   vec2 dir = uv - 0.5;          // vector from screen centre
   float d  = length(dir);
-
   // Chromatic aberration — R pushed out, B pulled in
   float r = texture(tex0, uv + dir * strength * 0.04).r;
   float g = texture(tex0, uv).g;
   float b = texture(tex0, uv - dir * strength * 0.04).b;
-
   // Radial vignette
   float vig = 1.0 - smoothstep(0.35, 1.0, d * vignette);
-
   outColor = vec4(r, g, b, 1.0) * vig;
 }
 `
@@ -49,6 +43,8 @@ const sketch = (p) => {
     p.createCanvas(600, 340, p.WEBGL)
     layer = p.createFramebuffer()
 
+    // createUniformUI mounts inside the canvas parent and auto-ticks
+    // every predraw via the registered player — no manual tick() needed
     uiSceneRef = p.createUniformUI({
       speed:     { min: 0,   max: 0.05, value: 0.012, step: 0.001 },
       shininess: { min: 1,   max: 200,  value: 80,    step: 1     },
@@ -56,11 +52,13 @@ const sketch = (p) => {
 
     chromaFilter = p.createFilterShader(chromaFrag)
 
+    // target: chromaFilter — tick() calls chromaFilter.setUniform() automatically
     uiChromaRef = p.createUniformUI({
-      strength: { min: 0, max: 1,  value: 0.4, step: 0.01 },
-      vignette: { min: 0, max: 3,  value: 1.4, step: 0.05 },
+      strength: { min: 0, max: 1, value: 0.4, step: 0.01 },
+      vignette: { min: 0, max: 3, value: 1.4, step: 0.05 },
     }, { target: chromaFilter, title: 'Chroma + Vignette',
          labels: true, color: 'white', x: 170, y: 10, width: 160 })
+
     uiChromaRef.visible = enabled.chroma
 
     models = Array.from({ length: 32 }, (_, i) => ({
@@ -96,14 +94,23 @@ const sketch = (p) => {
       else                         p.sphere(m.size, 5, 3)
       p.pop()
     })
-    layer.end()
 
+    layer.end()
     p.pipe(layer, enabled.chroma ? [chromaFilter] : [])
   }
 }
 
-onMounted(() => { p5Instance = new p5(sketch, container.value) })
-onUnmounted(() => { p5Instance?.remove(); uiSceneRef = uiChromaRef = null })
+onMounted(() => {
+  p5Instance = new p5(sketch, container.value)
+})
+
+onUnmounted(() => {
+  // dispose() removes DOM nodes — clearPlayers (called by p5.remove) does not
+  uiSceneRef?.dispose()
+  uiChromaRef?.dispose()
+  uiSceneRef = uiChromaRef = null
+  p5Instance?.remove()
+})
 </script>
 
 <template>

@@ -250,7 +250,7 @@ layout: center
 ---
 ## Smooth camera paths
 Record keyframes. Play back a spline-interpolated fly-through.
-<TreeSketch />
+<PathDemo />
 
 ---
 layout: center
@@ -442,20 +442,17 @@ Classify every object against the view frustum every frame. Zero allocations.
 layout: center
 ---
 ### Visibility query — one call per object
-
 ```js
 // Sphere
 m.cull = function () {
   this.visibility = p.visibility({ center: this.position, radius: this.radius })
 }
-
 // Box
 m.cull = function () {
-  this._c1.set(this.position.x - hw, this.position.y - hh, this.position.z - hd)
-  this._c2.set(this.position.x + hw, this.position.y + hh, this.position.z + hd)
+  this._c1.set([this.position.x - hw, this.position.y - hh, this.position.z - hd])
+  this._c2.set([this.position.x + hw, this.position.y + hh, this.position.z + hd])
   this.visibility = p.visibility({ corner1: this._c1, corner2: this._c2 })
 }
-
 // in draw() — result drives render decisions
 if      (m.visibility === p5.Tree.VISIBLE)     { p.fill(m.color); p.noStroke() }
 else if (m.visibility === p5.Tree.SEMIVISIBLE) { p.noFill();      p.stroke(m.color) }
@@ -469,22 +466,18 @@ else if (m.visibility === p5.Tree.SEMIVISIBLE) { p.noFill();      p.stroke(m.col
 layout: center
 ---
 ### Frustum visualisation + HUD inset
-
 ```js
-// Cache e and pm once per frame — reused by viewFrustum and visibility
-e  = p.eMatrix()   // 📷 eye matrix  — where the camera is in world space
-pm = p.pMatrix()   // 📐 projection  — what the camera sees
-
+// Fill owned buffers once per frame — out-first contract, zero allocation
+p.eMatrix(_eBuf)   // 📷 inv(V) into Float32Array(16) — camera position in world space
+p.pMatrix(_pBuf)   // 📐 P into Float32Array(16)      — what the camera sees
 // Draw the frustum shape into the overview scene
 p.viewFrustum({
-  eMatrix: e, pMatrix: pm,
+  eMatrix: _eBuf, pMatrix: _pBuf,
   bits: p5.Tree.NEAR | p5.Tree.FAR,
   viewer: () => p.axes({ size: 50 })
 })
-
 // Render the culled view into a framebuffer, stamp it as a HUD inset
 fbo.begin(); /* draw scene */ fbo.end()
-
 p.beginHUD()
 p.translate(p.width - p.width / 3, p.height)
 p.scale(1, -1)                                 // flip Y — FBO origin is bottom-left
@@ -492,8 +485,8 @@ p.image(fbo, 0, 0, p.width / 3, p.height / 3)
 p.endHUD()
 ```
 
-> `eMatrix` and `pMatrix` are the only state `viewFrustum` and `visibility` need —  
-> cache them once, pass everywhere. Two cameras, one canvas.
+> `_eBuf` and `_pBuf` are `Float32Array(16)` allocated once in setup —  
+> filled once per frame, passed everywhere. Two cameras, one canvas.
 
 ---
 level: 1
@@ -582,14 +575,25 @@ Sources cited throughout — surveying cutting-edge authoring tools is ongoing.
 
 <carbon-logo-github class="inline" /> [github.com/VisualComputing/p5.tree](https://github.com/VisualComputing/p5.tree)
 
-📄 Charalambos JP (2025) — **nub: A Rendering and Interaction Library for Visual Computing in Processing**  
-Journal of Open Research Software · [doi:10.5334/jors.477](https://doi.org/10.5334/jors.477)
-
-🎨 [p5js.org](https://p5js.org) — p5.js v2 · WebGL renderer · Strands · Framebuffer
-
 ⚡ [rapier.rs](https://rapier.rs) — Rapier physics · Apache 2.0 · `@dimforge/rapier3d`
 
 💀 [github.com/VAST-AI-Research/UniRig](https://github.com/VAST-AI-Research/UniRig) — UniRig · AI-based auto-rigging · SIGGRAPH 2025
+
+📄 Chaparro S (2021) — **Método de cinemática inversa en tiempo real basado en FABRIK para estructuras altamente restrictas** · [MSc Thesis](https://repositorio.unal.edu.co/handle/unal/79872) · Universidad Nacional de Colombia
+
+🎓 [mauriciomeza.github.io/WebGL-Tests](https://mauriciomeza.github.io/WebGL-Tests/) — Meza M · **Exploración de WebGL: Gráficos 3D en la Web**
+
+📄 Charalambos JP (2025) — **nub: A Rendering and Interaction Library for Visual Computing in Processing** — Journal of Open Research Software · [doi:10.5334/jors.477](https://doi.org/10.5334/jors.477)
+
+🌐 [registry.khronos.org/webgl/specs/latest/2.0](https://registry.khronos.org/webgl/specs/latest/2.0/) — WebGL 2.0 Specification · Khronos Group
+
+🌐 [w3.org/TR/webgpu](https://www.w3.org/TR/webgpu/) — WebGPU Specification · W3C Candidate Draft · GPU for the Web Working Group
+
+🌐 [p5js.org](https://p5js.org) — p5.js v2 · WebGL renderer · Strands · Framebuffer
+
+🌐 [babylonjs.com](https://www.babylonjs.com/) — Babylon.js · Real-time 3D engine for the web
+
+🌐 [threejs.org](https://threejs.org/) — Three.js · Lightweight WebGL library for the web
 
 ---
 layout: center

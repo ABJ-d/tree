@@ -6,6 +6,7 @@ import 'p5.tree'
 
 const container = ref(null)
 let p5Instance
+let trackUIRef = null  // hold ref so we can dispose the DOM panel
 
 const sketch = (p) => {
   let track
@@ -13,14 +14,14 @@ const sketch = (p) => {
 
   p.setup = function () {
     p.createCanvas(600, 340, p.WEBGL)
-
     track = p.createPoseTrack()
     track.add({ pos: [0,    0,   0],  scl: [1, 1, 1] })
     track.add({ pos: [160, -60,  80], rot: { axis: [1, 0, 0], angle: p.PI }, scl: [1, 2.5, 1] })
     track.add({ pos: [-140, 80, -60], rot: { axis: [0, 0, 1], angle: p.PI }, scl: [2.5, 1, 1] })
     track.add({ pos: [0,    0,   0],  scl: [1, 1, 1] }) // 🔁 loop back
 
-    p.createTrackUI(track, { rate: 0.4, info: true, color: 'white' })
+    // createTrackUI mounts inside the canvas parent and auto-ticks via player
+    trackUIRef = p.createTrackUI(track, { rate: 0.4, info: true, color: 'white' })
 
     // 🎨 flash a new palette on every cycle end
     track.onEnd = () => { bg = [p.random(255), p.random(255), p.random(255)] }
@@ -29,7 +30,6 @@ const sketch = (p) => {
   p.draw = function () {
     p.background(...bg)
     p.orbitControl()
-
     p.axes({ size: 180 })
     p.push(); p.stroke(60, 75, 95, 120); p.grid({ size: 440 }); p.pop()
 
@@ -62,13 +62,21 @@ const sketch = (p) => {
   }
 }
 
-onMounted(() => { p5Instance = new p5(sketch, container.value) })
-onUnmounted(() => { p5Instance?.remove() })
+onMounted(() => {
+  p5Instance = new p5(sketch, container.value)
+})
+
+onUnmounted(() => {
+  // dispose() removes the DOM panel — p5.remove() only clears players and pipe
+  trackUIRef?.dispose()
+  trackUIRef = null
+  p5Instance?.remove()
+})
 </script>
 
 <template>
   <div class="flex flex-col items-center gap-3">
-    <div ref="container" class="rounded-xl shadow-2xl border border-white/10 overflow-hidden" />
+    <div ref="container" class="relative rounded-xl shadow-2xl border border-white/10 overflow-hidden" />
     <p class="text-xs opacity-50 italic tracking-wide">
       PoseTrack — TRS keyframes · Catmull-Rom spline · background flashes on cycle end
     </p>

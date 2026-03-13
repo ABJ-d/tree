@@ -9,6 +9,8 @@ let p5Instance
 
 const sketch = (p) => {
   let models
+  // 🗄️ allocated once in setup — reused every frame, zero draw-loop allocs
+  const pv = new Float32Array(16)
 
   p.setup = function () {
     p.createCanvas(600, 340, p.WEBGL)
@@ -30,19 +32,18 @@ const sketch = (p) => {
     p.orbitControl()
     p.axes({ size: 120 })
     p.push(); p.stroke(0.25); p.grid({ size: 360, subdivisions: 12 }); p.pop()
-
     p.ambientLight(0.35)
     p.directionalLight(1, 0.95, 0.8,  0.3,  0.5, -1)
     p.directionalLight(0.2, 0.4, 0.8, -0.5, -0.3, 0.5)
 
-    // 🗄️ cache pvMatrix once — reused for every object this frame
-    const pv = p.pvMatrix()
+    // 🗄️ fill pv once per frame — out-first contract, no allocation
+    p.pvMatrix(pv)
 
     models.forEach(m => {
       p.push()
       p.translate(m.position)
 
-      // picking size scales with object — fits the rendered shape in screen space
+      // pv buffer reused for every object this frame
       const params = { pvMatrix: pv, size: m.size * 2.5 }
       const hit    = p.mousePicking(params)
 
@@ -54,15 +55,14 @@ const sketch = (p) => {
         p.shininess(60)
       }
 
-      if      (m.type === 'box')    p.box(m.size * 1.6)
-      else if (m.type === 'torus')  p.torus(m.size, m.size * 0.35)
-      else                          p.sphere(m.size, 6, 4)
+      if      (m.type === 'box')   p.box(m.size * 1.6)
+      else if (m.type === 'torus') p.torus(m.size, m.size * 0.35)
+      else                         p.sphere(m.size, 6, 4)
 
       // overlay: bullsEye circle tracks each object in screen space
       p.strokeWeight(hit ? 2.5 : 1)
       p.stroke(hit ? p.color(1, 0.9, 0) : p.color(0.3, 0.6, 1))
       p.bullsEye(params)
-
       p.pop()
     })
   }
@@ -76,7 +76,7 @@ onUnmounted(() => { p5Instance?.remove() })
   <div class="flex flex-col items-center gap-3">
     <div ref="container" class="rounded-xl shadow-2xl border border-white/10 overflow-hidden" />
     <p class="text-xs opacity-40 italic tracking-wide">
-      Hover objects — screen-space proximity picking · pvMatrix cached per frame
+      Hover objects — screen-space proximity picking · pvMatrix filled into owned buffer per frame
     </p>
   </div>
 </template>
