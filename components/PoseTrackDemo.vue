@@ -11,17 +11,19 @@ let trackUIRef = null  // hold ref so we can dispose the DOM panel
 const sketch = (p) => {
   let track
   let bg = [18, 20, 30]
+  // 🗄️ allocated once in setup — reused every frame, zero draw-loop allocs
+  // const out = { pos: [0, 0, 0], rot: [0, 0, 0, 1], scl: [1, 1, 1] }
 
   p.setup = function () {
     p.createCanvas(600, 340, p.WEBGL)
-    track = p.createPoseTrack()
+    track = p.createTrack()
     track.add({ pos: [0,    0,   0],  scl: [1, 1, 1] })
     track.add({ pos: [160, -60,  80], rot: { axis: [1, 0, 0], angle: p.PI }, scl: [1, 2.5, 1] })
     track.add({ pos: [-140, 80, -60], rot: { axis: [0, 0, 1], angle: p.PI }, scl: [2.5, 1, 1] })
     track.add({ pos: [0,    0,   0],  scl: [1, 1, 1] }) // 🔁 loop back
 
-    // createTrackUI mounts inside the canvas parent and auto-ticks via player
-    trackUIRef = p.createTrackUI(track, { rate: 0.4, info: true, color: 'white' })
+    // createPanel mounts inside the canvas parent and auto-ticks via player
+    trackUIRef = p.createPanel(track, { rate: 0.4, info: true, color: 'white' })
 
     // 🎨 flash a new palette on every cycle end
     track.onEnd = () => { bg = [p.random(255), p.random(255), p.random(255)] }
@@ -40,6 +42,7 @@ const sketch = (p) => {
 
     // 🎯 animated object — pose driven by track
     p.push()
+    //p.applyPose(track.eval(out))
     p.applyPose(track.eval())
     p.axes({ size: 60,
       bits: p5.Tree.X | p5.Tree._X | p5.Tree.Y | p5.Tree._Y | p5.Tree.Z | p5.Tree._Z })

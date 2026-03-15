@@ -9,19 +9,23 @@ let p5Instance
 let trackUIRef = null
 
 const sketch = (p) => {
+  let track
+
   p.setup = function () {
     p.createCanvas(600, 340, p.WEBGL)
-    
-    // ✅ initialize projection before addPath so isOrthoCam(cam) resolves correctly
-    //p.perspective()
-    
-    p.addPath([0, 0, 480],     [0, 0, 0], [0, 1, 0])
-    p.addPath([300, -150, 0],  [0, 0, 0], [0, 1, 0])
-    p.addPath([-220, 80, 280], [0, 0, 0], [0, 1, 0])
-    p.addPath([0, 0, 480],     [0, 0, 0], [0, 1, 0]) // loop back
 
-    // no track arg — defaults to curCamera; mounts into canvas parent
-    trackUIRef = p.createTrackUI({ add: true, info: true, color: 'white' })
+    // init camera at path origin so orbit feels natural before playback
+    p.camera(0, 0, 800, 0, 0, 0, 0, 1, 0)
+
+    track = p.createTrack(p.getCamera())
+    track.add({ eye: [   0,   0,  800], center: [0, 0, 0] }) // wide front
+    track.add({ eye: [ 400, -120,  200], center: [0, 0, 0] }) // right-front low
+    track.add({ eye: [   0, -300, -150], center: [0, 0, 0] }) // overhead-rear
+    track.add({ eye: [-380,  100,  180], center: [0, 0, 0] }) // left-back high
+    track.add({ eye: [   0,   0,  800], center: [0, 0, 0] }) // loop back
+
+    // createPanel detects track.add → shows + button; auto-ticks via registered player
+    trackUIRef = p.createPanel(track, { info: true, color: 'white' })
   }
 
   p.draw = function () {
@@ -67,8 +71,8 @@ const sketch = (p) => {
   }
 
   p.keyPressed = function () {
-    if (p.key === 'p') p.playPath()
-    if (p.key === 'r') p.resetPath()
+    if (p.key === 'p') track.play({ loop: true })
+    if (p.key === 'r') track.reset()
   }
 }
 
@@ -89,7 +93,7 @@ onUnmounted(() => {
     <div ref="container" class="relative rounded-xl shadow-2xl border border-white/10 overflow-hidden" />
     <p class="text-xs opacity-50 italic tracking-wide">
       Orbit · 
-      <kbd class="px-1 py-0.5 rounded bg-white/10 font-mono">p</kbd> play · 
+      <kbd class="px-1 py-0.5 rounded bg-white/10 font-mono">p</kbd> play flythrough · 
       <kbd class="px-1 py-0.5 rounded bg-white/10 font-mono">r</kbd> reset
     </p>
   </div>

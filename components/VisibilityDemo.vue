@@ -20,8 +20,9 @@ const sketch = (p) => {
   // _pBuf — Float32Array(16) filled by pMatrix(_pBuf) = P, inside fbo scope.
   //   Passed to viewFrustum({ pMatrix: _pBuf }).
   //
-  // _b    — 6 world-space half-planes from bounds({ eMatrix: _eBuf }).
-  //   Forwarded to all visibility() calls, avoiding 50 P·V inversions per frame.
+  // _b    — 6 world-space frustum planes from bounds({ eMatrix: _eBuf }).
+  //   Forwarded to all visibility() calls, avoiding 50 frustumPlanes()
+  //   recomputations per frame (each involves trig).
 
   const _eBuf = new Float32Array(16)
   const _pBuf = new Float32Array(16)
@@ -41,9 +42,10 @@ const sketch = (p) => {
   //   2. frustum/ortho()— writes P
   //   3. eMatrix(_eBuf) — reads inv(V) into _eBuf  (out-first, zero-alloc)
   //   4. pMatrix(_pBuf) — reads P into _pBuf        (out-first, zero-alloc)
-  //   5. bounds()       — derives 6 world-space half-planes from _eBuf → _b
+  //   5. bounds()       — extracts camera basis from _eBuf + projection params,
+  //                       calls frustumPlanes() once → _b
   //      Stored and forwarded to all visibility() calls, avoiding 50 redundant
-  //      P·V inversions per frame.
+  //      frustumPlanes() recomputations per frame.
 
   function update() {
     const persp  = cPersp.checked()
@@ -78,7 +80,8 @@ const sketch = (p) => {
     p.pMatrix(_pBuf)
 
     // Compute 6 world-space frustum planes once per frame.
-    // bounds() maps camera origin + 3 basis axes EYE→WORLD via inv(P·V).
+    // bounds() extracts camera basis from _eBuf and projection params,
+    // then calls frustumPlanes() (trig) once → keyed plane object _b.
     // _b is forwarded to every visibility() call to skip re-derivation.
     _b = p.bounds({ eMatrix: _eBuf })
   }
@@ -219,8 +222,8 @@ const sketch = (p) => {
       }
 
       if (cCull.checked()) {
-        // Forward _b — the 6 pre-computed half-planes — so visibility() skips
-        // re-deriving them. Without this, each call inverts P·V internally.
+        // Forward _b — the 6 pre-computed frustum planes — so visibility() skips
+        // re-deriving them. Without this, each call recomputes frustumPlanes() internally.
         m.visibility = m.type === 'box'
           ? p.visibility({
               corner1: [m.position.x - m.w/2, m.position.y - m.h/2, m.position.z - m.d/2],

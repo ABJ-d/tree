@@ -43,17 +43,17 @@ const sketch = (p) => {
     p.createCanvas(600, 340, p.WEBGL)
     layer = p.createFramebuffer()
 
-    // createUniformUI mounts inside the canvas parent and auto-ticks
+    // createPanel mounts inside the canvas parent and auto-ticks
     // every predraw via the registered player — no manual tick() needed
-    uiSceneRef = p.createUniformUI({
+    uiSceneRef = p.createPanel({
       speed:     { min: 0,   max: 0.05, value: 0.012, step: 0.001 },
       shininess: { min: 1,   max: 200,  value: 80,    step: 1     },
     }, { title: 'Scene', labels: true, color: 'white', x: 10,  y: 10, width: 150 })
 
     chromaFilter = p.createFilterShader(chromaFrag)
 
-    // target: chromaFilter — tick() calls chromaFilter.setUniform() automatically
-    uiChromaRef = p.createUniformUI({
+    // target: chromaFilter — bridge wraps setUniform, tick() pushes automatically
+    uiChromaRef = p.createPanel({
       strength: { min: 0, max: 1, value: 0.4, step: 0.01 },
       vignette: { min: 0, max: 3, value: 1.4, step: 0.05 },
     }, { target: chromaFilter, title: 'Chroma + Vignette',
