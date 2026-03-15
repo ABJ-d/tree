@@ -73,14 +73,14 @@ layout: center
 
 ```mermaid
 flowchart LR
-  subgraph T["🌳 @nakednous/tree v0.0.1"]
+  subgraph T["🌳 @nakednous/tree v0.0.3"]
     t1["📐 spaces & transforms"]
     t2["🔑 keyframes · PoseTrack"]
     t3["👁️ visibility · frustum"]
     t4["➕ mat4 · quaternions · splines"]
   end
 
-  subgraph U["🎛️ @nakednous/ui v0.0.1"]
+  subgraph U["🎛️ @nakednous/ui v0.0.3"]
     u1["🎚️ uniform sliders · color pickers"]
     u2["⏯️ track transport · timeline"]
   end
@@ -92,14 +92,14 @@ flowchart LR
 layout: center
 ---
 
-## p5.tree.js v0.0.15 — bridge layer
+## p5.tree.js v0.0.19 — bridge layer
 
 ```mermaid
 flowchart TB
   T["🌳 @nakednous/tree"]
   U["🎛️ @nakednous/ui"]
 
-  subgraph P["🌉 p5.tree.js v0.0.15"]
+  subgraph P["🌉 p5.tree.js v0.0.19"]
     p1["🖥️ Renderer3D · Camera · HUD"]
     p2["✨ Shader · Strands · Pipe"]
     p3["🔄 PoseTrack player · lifecycle hooks"]
@@ -128,7 +128,7 @@ flowchart LR
     B["p5.js v2
     Renderer3D · Framebuffer
     Shader · Strands"]
-    C["p5.tree.js v0.0.15
+    C["p5.tree.js v0.0.19
     Keyframes · Spaces
     Pipe · HUD · Uniform UI"]
   end
@@ -251,50 +251,43 @@ layout: center
 ## Smooth camera paths
 Record keyframes. Play back a spline-interpolated fly-through.
 <PathDemo />
-
 ---
 layout: center
 ---
-
 ### camera path — setup
-
 ```js
 p.setup = function () {
   p.createCanvas(600, 340, p.WEBGL)
+  p.camera(0, 0, 800, 0, 0, 0, 0, 1, 0)
 
-  // 📍 record keyframes: eye · center · up
-  p.addPath([0, 0, 480],     [0, 0, 0], [0, 1, 0])
-  p.addPath([300, -150, 0],  [0, 0, 0], [0, 1, 0])
-  p.addPath([-220, 80, 280], [0, 0, 0], [0, 1, 0])
-  p.addPath([0, 0, 480],     [0, 0, 0], [0, 1, 0]) // 🔁 loop back
-
-  // 🎛️ transport panel — mounts next to canvas, no camera ref needed
-  p.createTrackUI({ add: true, info: true, color: 'white' })
+  track = p.createTrack(p.getCamera())
+  // 📍 record keyframes: eye · center
+  track.add({ eye: [   0,   0,  800], center: [0, 0, 0] }) // wide front
+  track.add({ eye: [ 400, -120,  200], center: [0, 0, 0] }) // right-front low
+  track.add({ eye: [   0, -300, -150], center: [0, 0, 0] }) // overhead-rear
+  track.add({ eye: [-380,  100,  180], center: [0, 0, 0] }) // left-back high
+  track.add({ eye: [   0,   0,  800], center: [0, 0, 0] }) // 🔁 loop back
+  // 🎛️ transport panel — mounts next to canvas, + button auto-enabled
+  p.createPanel(track, { info: true, color: 'white' })
 }
 ```
-
-> `addPath` captures a camera pose. `createTrackUI` wires ▶ ⏸ ↺ and **+** automatically — `curCamera` is the implicit target.
-
+> `createTrack(getCamera())` returns a `CameraTrack` bound to the default camera. `createPanel` detects `track.add` and enables **+** automatically.
 ---
 layout: center
 ---
-
 ### camera path — draw & keys
-
 ```js
 p.draw = function () {
   p.background(18, 20, 30)
   p.orbitControl()   // 🖱️ free orbit between playbacks
   // ... scene objects
 }
-
 p.keyPressed = function () {
-  if (p.key === 'p') p.playPath()   // ▶ play
-  if (p.key === 'r') p.resetPath()  // ↺ reset
+  if (p.key === 'p') track.play({ loop: true })  // ▶ play
+  if (p.key === 'r') track.reset()               // ↺ reset
 }
 ```
-
-> `orbitControl` and the path player coexist — orbit is active when the track is idle. `playPath` / `resetPath` are global forwarders; no camera variable needed anywhere.
+> `orbitControl` and the track player coexist — orbit is active when the track is idle. `play` / `reset` are called directly on the track instance.
 
 ---
 layout: center
@@ -302,19 +295,14 @@ layout: center
 ## Animating objects in 3D space
 TRS keyframes — position · rotation · scale — interpolated every frame.
 <PoseTrackDemo />
-
 ---
 layout: center
 ---
-
 ### PoseTrack — setup
-
 ```js
 p.setup = function () {
   p.createCanvas(600, 340, p.WEBGL)
-
-  track = p.createPoseTrack()
-
+  track = p.createTrack()
   // 📍 TRS keyframes — pos · rot (axis-angle) · scl
   track.add({ pos: [0,    0,   0],  scl: [1,   1, 1] })
   track.add({ pos: [160, -60,  80],
@@ -324,29 +312,22 @@ p.setup = function () {
               rot: { axis: [0, 0, 1], angle: PI },
               scl: [2.5, 1, 1] })
   track.add({ pos: [0, 0, 0], scl: [1, 1, 1] })  // 🔁 loop back
-
   // 🎛️ transport panel — explicit track ref required (not curCamera)
-  p.createTrackUI(track, { rate: 0.4, info: true, color: 'white' })
-
+  p.createPanel(track, { rate: 0.4, info: true, color: 'white' })
   // 🎨 user hook — fires at natural end of each playback cycle
   track.onEnd = () => { bg = [random(255), random(255), random(255)] }
 }
 ```
-
-> `rot` accepts **axis-angle**, a raw `[x,y,z,w]` quaternion, or a **look-dir** object — the parser normalises all forms. `onEnd` fires on natural boundary only — not on `stop()` or `reset()`.
-
+> `createTrack()` with no argument returns a `PoseTrack`. `rot` accepts **axis-angle**, a raw `[x,y,z,w]` quaternion, or a **look-dir** object — the parser normalises all forms. `onEnd` fires on natural boundary only — not on `stop()` or `reset()`.
 ---
 layout: center
 ---
-
 ### PoseTrack — draw
-
 ```js
 p.draw = function () {
   p.background(...bg)
   p.orbitControl()
-
-  // 🎯 eval() returns current { pos, rot, scl } — no allocation per call
+  // 🎯 eval() returns current { pos, rot, scl } — allocates once if no out passed
   p.push()
   p.applyPose(track.eval())        // translate · rotateQuat · scale
   p.axes({ size: 60, bits:
@@ -357,8 +338,7 @@ p.draw = function () {
   p.pop()
 }
 ```
-
-> `track.eval()` reads the cursor without advancing it — `tick()` is called automatically each `predraw` by the registered player. `applyPose` decomposes to `translate` + `rotateQuat` + `scale` in one call.
+> `track.eval()` reads the cursor without advancing it — `tick()` is called automatically each `predraw` by the registered player. Pass a pre-allocated `out` buffer to go zero-alloc. `applyPose` decomposes to `translate` + `rotateQuat` + `scale` in one call.
 
 ---
 layout: center
@@ -371,65 +351,51 @@ Scene to framebuffer. GLSL filter as a live-tunable pass.
 layout: center
 ---
 ### Writing a GLSL 3 filter
-
 ```glsl
 #version 300 es
 precision mediump float;
-
 uniform sampler2D tex0;
 uniform float strength;   // RGB split radius
 uniform float vignette;   // falloff intensity
-
 in  vec2 vTexCoord;       // replaces varying (GLSL 3)
 out vec4 outColor;        // replaces gl_FragColor (GLSL 3)
-
 void main() {
   vec2 dir = vTexCoord - 0.5;                         // from screen centre
-
   // Push R out, pull B in — G stays sharp
   float r = texture(tex0, vTexCoord + dir * strength * 0.04).r;
   float g = texture(tex0, vTexCoord).g;
   float b = texture(tex0, vTexCoord - dir * strength * 0.04).b;
-
   // Radial vignette — darkens edges
   float vig = 1.0 - smoothstep(0.35, 1.0, length(dir) * vignette);
-
   outColor = vec4(r, g, b, 1.0) * vig;
 }
 ```
-
 > Two uniforms — `strength` and `vignette` — driven live by the panel.
 
 ---
 layout: center
 ---
-### `createUniformUI` — push vs pull
-
+### `createPanel` — push vs pull
 ```js
 // ── pull pattern — no target, you read each frame ────────────────────
-uiScene = p.createUniformUI({
+uiScene = p.createPanel({
   speed:     { min: 0, max: 0.05, value: 0.012, step: 0.001 },
   shininess: { min: 1, max: 200,  value: 80,    step: 1     },
 }, { title: 'Scene', labels: true, color: 'white' })
-
 // in draw():
 p.shininess(uiScene.shininess.value())   // plain JS read
-
 // ── push pattern — target: panel calls setUniform() every frame ──────
 chromaFilter = p.createFilterShader(chromaFrag)
-
-uiChroma = p.createUniformUI({
+uiChroma = p.createPanel({
   strength: { min: 0, max: 1, value: 0.4, step: 0.01 },
   vignette: { min: 0, max: 3, value: 1.4, step: 0.05 },
 }, { target: chromaFilter, title: 'Chroma + Vignette', labels: true, color: 'white' })
-
 // in draw():
 p.pipe(layer, enabled.chroma ? [chromaFilter] : [])
 // ↑ no setUniform() calls — the UI owns the push
 ```
-
 > **Pull** = manual, flexible — great for scene params.  
-> **Push** = declarative, zero boilerplate — great for GLSL uniforms.
+> **Push** = declarative, zero boilerplate — bridge detects `setUniform` on `target` and wires it automatically.
 
 ---
 layout: center
