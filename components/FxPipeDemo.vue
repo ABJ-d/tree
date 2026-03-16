@@ -48,7 +48,7 @@ const sketch = (p) => {
     uiSceneRef = p.createPanel({
       speed:     { min: 0,   max: 0.05, value: 0.012, step: 0.001 },
       shininess: { min: 1,   max: 200,  value: 80,    step: 1     },
-    }, { title: 'Scene', labels: true, color: 'white', x: 10,  y: 10, width: 150 })
+    }, { title: 'Scene', labels: true, collapsed: false, color: 'white', x: 10,  y: 10, width: 150 })
 
     chromaFilter = p.createFilterShader(chromaFrag)
 
