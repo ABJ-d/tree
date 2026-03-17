@@ -73,14 +73,14 @@ layout: center
 
 ```mermaid
 flowchart LR
-  subgraph T["🌳 @nakednous/tree v0.0.3"]
+  subgraph T["🌳 @nakednous/tree v0.0.4"]
     t1["📐 spaces & transforms"]
     t2["🔑 keyframes · PoseTrack"]
     t3["👁️ visibility · frustum"]
     t4["➕ mat4 · quaternions · splines"]
   end
 
-  subgraph U["🎛️ @nakednous/ui v0.0.3"]
+  subgraph U["🎛️ @nakednous/ui v0.0.4"]
     u1["🎚️ uniform sliders · color pickers"]
     u2["⏯️ track transport · timeline"]
   end
@@ -92,14 +92,14 @@ flowchart LR
 layout: center
 ---
 
-## p5.tree.js v0.0.19 — bridge layer
+## p5.tree.js v0.0.20 — bridge layer
 
 ```mermaid
 flowchart TB
   T["🌳 @nakednous/tree"]
   U["🎛️ @nakednous/ui"]
 
-  subgraph P["🌉 p5.tree.js v0.0.19"]
+  subgraph P["🌉 p5.tree.js v0.0.20"]
     p1["🖥️ Renderer3D · Camera · HUD"]
     p2["✨ Shader · Strands · Pipe"]
     p3["🔄 PoseTrack player · lifecycle hooks"]
@@ -128,7 +128,7 @@ flowchart LR
     B["p5.js v2
     Renderer3D · Framebuffer
     Shader · Strands"]
-    C["p5.tree.js v0.0.19
+    C["p5.tree.js v0.0.20
     Keyframes · Spaces
     Pipe · HUD · Uniform UI"]
   end
