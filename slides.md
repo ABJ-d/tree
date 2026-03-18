@@ -529,7 +529,7 @@ layout: center
 ---
 
 # Design Decisions
-Language · performance · where native speed is warranted
+Language · Performance · Use Cases · AI Use
 
 ---
 layout: center
@@ -541,9 +541,9 @@ layout: center
 flowchart TB
   subgraph GDD["🎮 GDD — Game Designers & Developers"]
     direction LR
-    D["👩‍💻 Dev students\nknow JS · little or no C++\nuniversity courses"]
-    J["🕹️ Game jammers\nbrowser-first · no install\nsome outside university"]
-    E["🎓 Future courses\n3D-games · extension\ncontinuing education"]
+    D["👩‍💻 Dev students\n JS / Python · little C++"]
+    J["🕹️ Game jammers\nbrowser-first · no install"]
+    E["🎓 Future courses\n3D-games · continuing education"]
   end
 
   subgraph VC["🔬 Visual Computing"]
@@ -597,24 +597,6 @@ layout: center
 | Future native speed | WebAssembly modules | call from **JavaScript** |
 > One language from sketch to engine — no toolchain switch, no build step, no call boundary overhead.  
 > Accessible to dev students and game jammers alike. Current design is **proof-of-concept driven**.
-
----
-layout: center
----
-
-## When native speed is warranted — and what's coming
-
-**Where Rust → WebAssembly pays off**
-
-Constraint solvers iterating thousands of bodies per frame (Rapier), BVH traversal at massive object counts — CPU-bound work where [SIMD](https://webassembly.github.io/spec/core/) gives a real multiplier.  
-The key: cross the WASM boundary **once per frame** (one physics step), not per object — call overhead erases the gain otherwise.  
-Result: `@dimforge/rapier3d` drops in as an npm package. The p5.tree developer never touches Rust.
-
-**Prospects: physics and rigging via third parties**
-
-> ⚡ **Rapier** (`@dimforge/rapier3d`) — rigid body physics · [Rust](https://rust-lang.org/) → [WASM](https://webassembly.github.io/spec/core/) · Apache 2.0  
-> 💀 **UniRig** — AI auto-rigging · runs offline as a preprocessing step · MIT  
-> Both integrate without changing the JavaScript stack.
 
 ---
 layout: center
