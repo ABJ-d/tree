@@ -92,14 +92,14 @@ flowchart LR
 layout: center
 ---
 
-## p5.tree.js v0.0.20 — bridge layer
+## p5.tree.js v0.0.22 — bridge layer
 
 ```mermaid
 flowchart TB
   T["🌳 @nakednous/tree"]
   U["🎛️ @nakednous/ui"]
 
-  subgraph P["🌉 p5.tree.js v0.0.20"]
+  subgraph P["🌉 p5.tree.js v0.0.22"]
     p1["🖥️ Renderer3D · Camera · HUD"]
     p2["✨ Shader · Strands · Pipe"]
     p3["🔄 PoseTrack player · lifecycle hooks"]
@@ -128,7 +128,7 @@ flowchart LR
     B["p5.js v2
     Renderer3D · Framebuffer
     Shader · Strands"]
-    C["p5.tree.js v0.0.20
+    C["p5.tree.js v0.0.22
     Keyframes · Spaces
     Pipe · HUD · Uniform UI"]
   end
@@ -150,17 +150,18 @@ flowchart LR
   T["🌳 @nakednous/tree"]
   GPU["⚡ WebGL / WebGPU"]
 
-  subgraph V["🔬 Tier II — Rendering viz"]
+  subgraph V["🔬 Tier II — Visual Computing"]
     direction TB
     v1["🔭 pipeline · visibility demos"]
     v2["📐 space transform walkthroughs"]
     v3["📚 visual-computing course"]
   end
 
-  subgraph G["🎮 Tier III — Game engine _(future)_"]
+  subgraph G["🎮 Tier III — GDD · Game Engine"]
+    direction TB
     g1["🌐 Scene Graph · Systems"]
     g2["🖥️ render · input · physics"]
-    g3["🕹️ game-jam courses"]
+    g3["🕹️ dev students · game jammers\nfuture: 3D-games · extension courses"]
   end
 
   C --> V
@@ -181,7 +182,7 @@ layout: center
 # Showcase
 **Live demonstrations** — each built on the same three-package stack
 
-→ 🖱️ Screen-space picking  
+→ 🖱️ GPU color-ID picking  
 → 🎬 Camera path interpolation  
 → 🎯 Object animation · PoseTrack  
 → ✨ Post-FX pipeline · shaders  
@@ -190,8 +191,8 @@ layout: center
 ---
 layout: center
 ---
-## Screen-space picking
-Hover any object — no GPU readback, no raycasting. Pure screen-space proximity.
+## GPU color-ID picking
+Hover any object — sub-pixel accurate, handles any geometry. No raycasting, no heuristics.
 <PickingDemo />
 
 ---
@@ -199,51 +200,57 @@ layout: center
 ---
 ### How picking works
 ```js
-// 🗄️ cache pvMatrix once per frame — shared across all objects
-const pv = p.pvMatrix()
+// ── pick pass — one mousePick call resolves the whole scene ──────────────
+const hitId = mousePick(() => {
+  models.forEach(m => {
+    push()
+    translate(m.position)
+    fill(tag(m.id))   // encode integer id as a flat fill color
+    drawShape(m)
+    pop()
+  })
+})
+// hitId === 0  →  background / miss
+// hitId === m.id  →  that object is under the cursor
 
+// ── shading pass — normal draw, test the resolved id ────────────────────
 models.forEach(m => {
-  p.push()
-  p.translate(m.position)
-
-  // params reused for both picking and overlay drawing
-  const params = { pvMatrix: pv, size: m.size * 2.5 }
-
-  // projects model origin → screen, tests mouse distance < size/2
-  const hit = p.mousePicking(params)
-
-  hit ? p.emissiveMaterial(1, 1, 1) : p.specularMaterial(m.color)
-  p.sphere(m.size)
-
-  // bullsEye overlay drawn at the same projected screen position
-  p.stroke(hit ? 'yellow' : 'steelblue')
-  p.bullsEye(params)   // reuses the same pvMatrix — no re-projection
-
-  p.pop()
+  push()
+  translate(m.position)
+  hitId === m.id
+    ? emissiveMaterial(1, 1, 1)
+    : (specularMaterial(m.color), shininess(90))
+  drawShape(m)
+  pop()
 })
 ```
 
-> `size` in `params` is **world-space** — internally divided by `pixelRatio(worldPos)` so the hit region shrinks with distance, matching the rendered object size on screen.  
-> One `pvMatrix()` call per frame — not per object.
+> `tag(id)` encodes a 24-bit integer as `'#rrggbb'` — works with `fill()` regardless of `colorMode()`.  
+> `noLights()`, `noStroke()`, `resetShader()` are called automatically before `drawFn`.
 
 ---
 layout: center
 ---
-### Current limits · future work
-```js
-// ✅ what works today — screen-space proximity
-const hit = p.mousePicking({ pvMatrix: pv, size: m.size * 2.5 })
-
-// size * 2.5 is a heuristic — works well for convex shapes
-// but over-selects on elongated or concave geometry
+### Under the hood — 1×1 FBO + pick matrix
+```
+colorPick(mouseX, mouseY, drawFn)
+  │
+  ├─ save P and V matrices   (fbo.begin() would overwrite both)
+  │
+  ├─ enter 1×1 framebuffer
+  │    restore V               (orbitControl / camera transform)
+  │    narrow P to one pixel   applyPickMatrix(P, x, y, w, h)
+  │    background(0)           clear → id 0 = miss
+  │    drawFn()                scene rendered flat, depth-tested
+  │
+  ├─ gl.readPixels(0,0,1,1)   one RGBA pixel
+  │    id = R | (G << 8) | (B << 16)
+  │
+  └─ fbo.end()                 P + V + full state restored automatically
 ```
 
-> **Current approach** — project object origin to screen, test mouse within a radius.  
-> Fast, zero GPU overhead, good enough for most interactive scenes.
-
-> **Future work** — precise picking via GL buffers:  
-> render object IDs into an offscreen framebuffer, read the pixel under the cursor.  
-> Sub-pixel accurate, handles any geometry — planned as a standalone module.
+> The FBO is **1×1** — the pick matrix transforms the projection so the pixel at *(x, y)* maps to the entire viewport. Depth test picks the nearest object, not draw order.  
+> FBO is lazily allocated on first call and released on sketch removal.
 
 ---
 layout: center
@@ -265,36 +272,33 @@ p.setup = function () {
   track.add({ eye: [   0,   0,  800], center: [0, 0, 0] }) // wide front
   track.add({ eye: [ 400, -120,  200], center: [0, 0, 0] }) // right-front low
   track.add({ eye: [   0, -300, -150], center: [0, 0, 0] }) // overhead-rear
-  track.add({ eye: [-380,  100,  180], center: [0, 0, 0] }) // left-back high
-  track.add({ eye: [   0,   0,  800], center: [0, 0, 0] }) // 🔁 loop back
-  // 🎛️ transport panel — mounts next to canvas, + button auto-enabled
-  p.createPanel(track, { info: true, color: 'white' })
+  track.add({ eye: [-300,  -60,  300], center: [0, 0, 0] }) // left-side
+  track.play({ loop: true, duration: 120 })
+  p.createPanel(track, { color: 'white' })
 }
 ```
-> `createTrack(getCamera())` returns a `CameraTrack` bound to the default camera. `createPanel` detects `track.add` and enables **+** automatically.
 ---
 layout: center
 ---
-### camera path — draw & keys
+### camera path — draw
 ```js
 p.draw = function () {
-  p.background(18, 20, 30)
-  p.orbitControl()   // 🖱️ free orbit between playbacks
-  // ... scene objects
-}
-p.keyPressed = function () {
-  if (p.key === 'p') track.play({ loop: true })  // ▶ play
-  if (p.key === 'r') track.reset()               // ↺ reset
+  p.background(20)
+  p.setCamera(cam)
+  p.orbitControl()   // works freely when track is stopped
+  p.axes(); p.grid()
 }
 ```
-> `orbitControl` and the track player coexist — orbit is active when the track is idle. `play` / `reset` are called directly on the track instance.
+> `createTrack(cam)` returns a **CameraTrack** — playback applies automatically in `predraw`.  
+> `orbitControl()` takes over the moment the track is stopped.
 
 ---
 layout: center
 ---
-## Animating objects in 3D space
-TRS keyframes — position · rotation · scale — interpolated every frame.
+## Object animation · PoseTrack
+Animate any object through `{ pos, rot, scl }` keyframes.
 <PoseTrackDemo />
+
 ---
 layout: center
 ---
@@ -318,6 +322,7 @@ p.setup = function () {
   track.onEnd = () => { bg = [random(255), random(255), random(255)] }
 }
 ```
+
 > `createTrack()` with no argument returns a `PoseTrack`. `rot` accepts **axis-angle**, a raw `[x,y,z,w]` quaternion, or a **look-dir** object — the parser normalises all forms. `onEnd` fires on natural boundary only — not on `stop()` or `reset()`.
 ---
 layout: center
@@ -338,6 +343,7 @@ p.draw = function () {
   p.pop()
 }
 ```
+
 > `track.eval()` reads the cursor without advancing it — `tick()` is called automatically each `predraw` by the registered player. Pass a pre-allocated `out` buffer to go zero-alloc. `applyPose` decomposes to `translate` + `rotateQuat` + `scale` in one call.
 
 ---
@@ -370,6 +376,7 @@ void main() {
   outColor = vec4(r, g, b, 1.0) * vig;
 }
 ```
+
 > Two uniforms — `strength` and `vignette` — driven live by the panel.
 
 ---
@@ -394,6 +401,7 @@ uiChroma = p.createPanel({
 p.pipe(layer, enabled.chroma ? [chromaFilter] : [])
 // ↑ no setUniform() calls — the UI owns the push
 ```
+
 > **Pull** = manual, flexible — great for scene params.  
 > **Push** = declarative, zero boilerplate — bridge detects `setUniform` on `target` and wires it automatically.
 
@@ -480,7 +488,7 @@ flowchart TB
     direction TB
     I["⚙️ physics — Rapier · Cannon"]
     J["🌑 shadow maps · multi-pass"]
-    K["🕹️ game-jam courses"]
+    K["🕹️ game-jam courses · extension courses"]
   end
   now --> next --> future
 ```
@@ -516,6 +524,99 @@ p.render(box)   // applies applyPose + visit() depth-first on box and its subtre
 > Same duck-typed pose contract as `PoseTrack`. Camera nodes, lights, and geometry all register the same way.
 
 ---
+level: 1
+layout: center
+---
+
+# Design Decisions
+Language · performance · where native speed is warranted
+
+---
+layout: center
+---
+
+## Who builds and plays on this stack
+
+```mermaid
+flowchart TB
+  subgraph GDD["🎮 GDD — Game Designers & Developers"]
+    direction LR
+    D["👩‍💻 Dev students\nknow JS · little or no C++\nuniversity courses"]
+    J["🕹️ Game jammers\nbrowser-first · no install\nsome outside university"]
+    E["🎓 Future courses\n3D-games · extension\ncontinuing education"]
+  end
+
+  subgraph VC["🔬 Visual Computing"]
+    direction LR
+    V1["📐 rendering research"]
+    V2["👁️ algorithm viz"]
+    V3["🎓 grad / undergrad courses"]
+  end
+
+  P["🌉 p5.tree.js"] --> GDD & VC
+  T["🌳 @nakednous/tree"] -->|"headless · any renderer"| VC
+```
+
+> Both groups share the same stack. GDD prioritises **low friction and browser-native delivery**.  
+> Visual Computing prioritises **algorithm transparency and headless deployability**.
+
+---
+layout: center
+---
+
+## GPU is the bottleneck — not the language
+
+```mermaid
+flowchart LR
+  JS["JavaScript\norchestration"]
+  CPU["CPU hot paths\nmat4 · slerp · frustum\nflat scalar · typed arrays\nV8 JIT ≈ native speed"]
+  GPU["GPU pipeline\ndraw calls · shaders\nrasterization · blending\n⬅ this is where time goes"]
+
+  JS -->|"<1% of frame"| CPU
+  JS -->|"WebGL / WebGPU\ncall overhead"| GPU
+  CPU -->|"feeds"| GPU
+```
+
+> JS calling WebGL is not meaningfully slower than C++ calling OpenGL for the same GPU workload — the work happens on the GPU either way.  
+> `@nakednous/tree` hot paths are flat scalar arithmetic on `Float32Array` — V8's TurboFan auto-vectorises these.  
+> The real budget is **draw calls and GPU submission** — neither is improved by switching languages.
+
+> _See: [WebGL Best Practices — MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices) — VAO reuse, draw call minimisation, buffer strategies._  
+> _See: [Optimizing WebGL — Emscripten](https://emscripten.org/docs/optimizing/Optimizing-WebGL.html) — GL call overhead, FFI transition cost per call, security validation overhead vs native._
+
+---
+layout: center
+---
+## One language across the stack
+| Layer | Technology | Language |
+|---|---|---|
+| GPU backends | WebGL · WebGL2 · WebGPU | GLSL / WGSL |
+| Creative coding | p5.js v2 · Strands | **JavaScript** |
+| Math core | `@nakednous/tree` | **JavaScript** |
+| UI | `@nakednous/ui` | **JavaScript** |
+| Future native speed | WebAssembly modules | call from **JavaScript** |
+> One language from sketch to engine — no toolchain switch, no build step, no call boundary overhead.  
+> Accessible to dev students and game jammers alike. Current design is **proof-of-concept driven**.
+
+---
+layout: center
+---
+
+## When native speed is warranted — and what's coming
+
+**Where Rust → WebAssembly pays off**
+
+Constraint solvers iterating thousands of bodies per frame (Rapier), BVH traversal at massive object counts — CPU-bound work where [SIMD](https://webassembly.github.io/spec/core/) gives a real multiplier.  
+The key: cross the WASM boundary **once per frame** (one physics step), not per object — call overhead erases the gain otherwise.  
+Result: `@dimforge/rapier3d` drops in as an npm package. The p5.tree developer never touches Rust.
+
+**Prospects: physics and rigging via third parties**
+
+> ⚡ **Rapier** (`@dimforge/rapier3d`) — rigid body physics · [Rust](https://rust-lang.org/) → [WASM](https://webassembly.github.io/spec/core/) · Apache 2.0  
+> 💀 **UniRig** — AI auto-rigging · runs offline as a preprocessing step · MIT  
+> Both integrate without changing the JavaScript stack.
+
+---
 layout: center
 ---
 ## AI use — current and ongoing
@@ -537,29 +638,67 @@ Much work remains. AI is a tool, not an author.
 layout: center
 ---
 # References
-Sources cited throughout — surveying cutting-edge authoring tools is ongoing.
+Stack & research · WebGL / WebGPU · WebAssembly / SIMD
+
+---
+layout: center
+hideInToc: true
+---
+# References · Stack & research
+
+**This project**
 
 <carbon-logo-github class="inline" /> [github.com/VisualComputing/p5.tree](https://github.com/VisualComputing/p5.tree)
 
-⚡ [rapier.rs](https://rapier.rs) — Rapier physics · Apache 2.0 · `@dimforge/rapier3d`
-
-💀 [github.com/VAST-AI-Research/UniRig](https://github.com/VAST-AI-Research/UniRig) — UniRig · AI-based auto-rigging · SIGGRAPH 2025
-
-📄 Chaparro S (2021) — **Método de cinemática inversa en tiempo real basado en FABRIK para estructuras altamente restrictas** · [MSc Thesis](https://repositorio.unal.edu.co/handle/unal/79872) · Universidad Nacional de Colombia
-
-🎓 [mauriciomeza.github.io/WebGL-Tests](https://mauriciomeza.github.io/WebGL-Tests/) — Meza M · **Exploración de WebGL: Gráficos 3D en la Web**
-
-📄 Charalambos JP (2025) — **nub: A Rendering and Interaction Library for Visual Computing in Processing** — Journal of Open Research Software · [doi:10.5334/jors.477](https://doi.org/10.5334/jors.477)
-
-🌐 [registry.khronos.org/webgl/specs/latest/2.0](https://registry.khronos.org/webgl/specs/latest/2.0/) — WebGL 2.0 Specification · Khronos Group
-
-🌐 [w3.org/TR/webgpu](https://www.w3.org/TR/webgpu/) — WebGPU Specification · W3C Candidate Draft · GPU for the Web Working Group
+**Creative coding foundation**
 
 🌐 [p5js.org](https://p5js.org) — p5.js v2 · WebGL renderer · Strands · Framebuffer
 
-🌐 [babylonjs.com](https://www.babylonjs.com/) — Babylon.js · Real-time 3D engine for the web
+**Related engines**
 
+🌐 [babylonjs.com](https://www.babylonjs.com/) — Babylon.js · Real-time 3D engine for the web  
 🌐 [threejs.org](https://threejs.org/) — Three.js · Lightweight WebGL library for the web
+
+**Prior work**
+
+📄 Charalambos JP (2025) — **nub: A Rendering and Interaction Library for Visual Computing in Processing** · Journal of Open Research Software · [doi:10.5334/jors.477](https://doi.org/10.5334/jors.477)  
+📄 Chaparro S (2021) — **Método de cinemática inversa en tiempo real basado en FABRIK para estructuras altamente restrictas** · [MSc Thesis](https://repositorio.unal.edu.co/handle/unal/79872) · Universidad Nacional de Colombia  
+🎓 [mauriciomeza.github.io/WebGL-Tests](https://mauriciomeza.github.io/WebGL-Tests/) — Meza M · **Exploración de WebGL: Gráficos 3D en la Web**
+
+---
+layout: center
+hideInToc: true
+---
+# References · WebGL / WebGPU
+
+**Specifications**
+
+🌐 [registry.khronos.org/webgl/specs/latest/2.0](https://registry.khronos.org/webgl/specs/latest/2.0/) — WebGL 2.0 Specification · Khronos Group  
+🌐 [w3.org/TR/webgpu](https://www.w3.org/TR/webgpu/) — WebGPU Specification · W3C Candidate Draft
+
+**Performance — GPU is the bottleneck**
+
+🌐 [developer.mozilla.org/…/WebGL_best_practices](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices) — WebGL Best Practices · MDN · draw call minimisation, VAO reuse, buffer strategies  
+🌐 [emscripten.org/docs/optimizing/Optimizing-WebGL.html](https://emscripten.org/docs/optimizing/Optimizing-WebGL.html) — Optimizing WebGL · Emscripten · per-call security validation overhead, FFI transition cost, draw call minimisation
+
+---
+layout: center
+hideInToc: true
+---
+# References · WebAssembly / SIMD
+
+**Specifications**
+
+🌐 [webassembly.github.io/spec/core](https://webassembly.github.io/spec/core/) — WebAssembly Core Specification · W3C  
+🌐 [github.com/WebAssembly/spec/…/SIMD.md](https://github.com/WebAssembly/spec/blob/main/proposals/simd/SIMD.md) — WebAssembly SIMD Proposal · 128-bit packed SIMD · phase 4 / shipped
+
+**Where Rust → WASM pays off**
+
+⚡ [rapier.rs](https://rapier.rs) — Rapier physics · Rust → WASM · `@dimforge/rapier3d` · Apache 2.0  
+💀 [github.com/VAST-AI-Research/UniRig](https://github.com/VAST-AI-Research/UniRig) — UniRig · AI-based auto-rigging · SIGGRAPH 2025 · MIT
+
+> Rapier: constraint solver in Rust with SIMD, shipped as npm — one WASM boundary crossing per physics step.  
+> UniRig: offline preprocessing step, Python + PyTorch — GPU compute dominates, Python orchestration is negligible.
 
 ---
 layout: center

@@ -9,8 +9,17 @@ let p5Instance
 
 const sketch = (p) => {
   let models
-  // 🗄️ allocated once in setup — reused every frame, zero draw-loop allocs
-  const pv = new Float32Array(16)
+  let hitId = 0
+
+  // Fixed palette — 6 hues cycled across objects
+  const palette = [
+    [0.95, 0.32, 0.22], // coral red
+    [0.25, 0.62, 0.95], // sky blue
+    [0.30, 0.88, 0.58], // mint
+    [0.95, 0.72, 0.18], // amber
+    [0.68, 0.32, 0.95], // violet
+    [0.95, 0.52, 0.22], // orange
+  ]
 
   p.setup = function () {
     p.createCanvas(600, 340, p.WEBGL)
@@ -18,53 +27,63 @@ const sketch = (p) => {
     p.frameRate(1000)
     document.oncontextmenu = () => false
 
-    const types = ['box', 'sphere', 'torus']
-    models = Array.from({ length: 24 }, () => ({
-      position: p5.Vector.random3D().mult(130),
-      size:     p.random() * 22 + 8,
-      color:    p.color(p.random(0.3, 1), p.random(0.3, 1), p.random(0.3, 1)),
-      type:     types[Math.floor(p.random(3))],
+    const types = ['box', 'sphere', 'torus', 'cone', 'cylinder']
+    models = Array.from({ length: 22 }, (_, i) => ({
+      position: p5.Vector.random3D().mult(p.random(55, 140)),
+      size:     p.random(12, 26),
+      color:    palette[i % palette.length],
+      type:     types[Math.floor(p.random(types.length))],
+      id:       i + 1,
     }))
   }
 
   p.draw = function () {
-    p.background(0.08)
+    p.background(0.07)
     p.orbitControl()
-    p.axes({ size: 120 })
-    p.push(); p.stroke(0.25); p.grid({ size: 360, subdivisions: 12 }); p.pop()
-    p.ambientLight(0.35)
-    p.directionalLight(1, 0.95, 0.8,  0.3,  0.5, -1)
-    p.directionalLight(0.2, 0.4, 0.8, -0.5, -0.3, 0.5)
+    p.axes({ size: 110 })
+    p.push(); p.stroke(0.16); p.grid({ size: 340, subdivisions: 12 }); p.pop()
 
-    // 🗄️ fill pv once per frame — out-first contract, no allocation
-    p.pvMatrix(pv)
+    // ── GPU pick pass — one call resolves the whole scene ─────────────────
+    hitId = p.mousePick(() => {
+      models.forEach(m => {
+        p.push()
+        p.translate(m.position)
+        p.fill(p.tag(m.id))
+        drawShape(m)
+        p.pop()
+      })
+    })
 
+    // ── Lighting ──────────────────────────────────────────────────────────
+    p.ambientLight(0.22)
+    p.directionalLight(1.0, 0.90, 0.72,  0.4,  0.55, -1.0)  // warm key
+    p.directionalLight(0.12, 0.28, 0.70, -0.5, -0.35,  0.6)  // cool fill
+    p.pointLight(0.55, 0.55, 1.0,  0, 200, 80)                // blue rim
+
+    // ── Shading pass ──────────────────────────────────────────────────────
     models.forEach(m => {
+      const hit = hitId === m.id
       p.push()
       p.translate(m.position)
-
-      // pv buffer reused for every object this frame
-      const params = { pvMatrix: pv, size: m.size * 2.5 }
-      const hit    = p.mousePicking(params)
-
       p.noStroke()
       if (hit) {
         p.emissiveMaterial(1, 1, 1)
       } else {
-        p.specularMaterial(m.color)
-        p.shininess(60)
+        p.specularMaterial(...m.color)
+        p.shininess(90)
       }
-
-      if      (m.type === 'box')   p.box(m.size * 1.6)
-      else if (m.type === 'torus') p.torus(m.size, m.size * 0.35)
-      else                         p.sphere(m.size, 6, 4)
-
-      // overlay: bullsEye circle tracks each object in screen space
-      p.strokeWeight(hit ? 2.5 : 1)
-      p.stroke(hit ? p.color(1, 0.9, 0) : p.color(0.3, 0.6, 1))
-      p.bullsEye(params)
+      drawShape(m)
       p.pop()
     })
+  }
+
+  function drawShape(m) {
+    const s = m.size
+    if      (m.type === 'box')      p.box(s * 1.5)
+    else if (m.type === 'sphere')   p.sphere(s, 9, 6)
+    else if (m.type === 'torus')    p.torus(s, s * 0.30)
+    else if (m.type === 'cone')     p.cone(s, s * 1.9, 8)
+    else if (m.type === 'cylinder') p.cylinder(s * 0.65, s * 1.7, 8)
   }
 }
 
@@ -76,7 +95,7 @@ onUnmounted(() => { p5Instance?.remove() })
   <div class="flex flex-col items-center gap-3">
     <div ref="container" class="rounded-xl shadow-2xl border border-white/10 overflow-hidden" />
     <p class="text-xs opacity-40 italic tracking-wide">
-      Hover objects — screen-space proximity picking · pvMatrix filled into owned buffer per frame
+      Hover objects — GPU color-ID picking · single mousePick pass resolves all 22 objects
     </p>
   </div>
 </template>
