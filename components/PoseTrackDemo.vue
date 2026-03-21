@@ -16,7 +16,7 @@ const sketch = (p) => {
 
   p.setup = function () {
     p.createCanvas(600, 340, p.WEBGL)
-    track = p.createTrack()
+    track = p.createPoseTrack()
     track.add({ pos: [0,    0,   0],  scl: [1, 1, 1] })
     track.add({ pos: [160, -60,  80], rot: { axis: [1, 0, 0], angle: p.PI }, scl: [1, 2.5, 1] })
     track.add({ pos: [-140, 80, -60], rot: { axis: [0, 0, 1], angle: p.PI }, scl: [2.5, 1, 1] })

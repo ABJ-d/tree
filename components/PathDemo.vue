@@ -17,7 +17,7 @@ const sketch = (p) => {
     // init camera at path origin so orbit feels natural before playback
     p.camera(0, 0, 800, 0, 0, 0, 0, 1, 0)
 
-    track = p.createTrack(p.getCamera())
+    track = p.createCameraTrack(p.getCamera())
     track.add({ eye: [   0,   0,  800], center: [0, 0, 0] }) // wide front
     track.add({ eye: [ 400, -120,  200], center: [0, 0, 0] }) // right-front low
     track.add({ eye: [   0, -300, -150], center: [0, 0, 0] }) // overhead-rear

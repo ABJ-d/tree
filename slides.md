@@ -92,14 +92,14 @@ flowchart LR
 layout: center
 ---
 
-## p5.tree.js v0.0.23 — bridge layer
+## p5.tree.js v0.0.24 — bridge layer
 
 ```mermaid
 flowchart TB
   T["🌳 @nakednous/tree"]
   U["🎛️ @nakednous/ui"]
 
-  subgraph P["🌉 p5.tree.js v0.0.23"]
+  subgraph P["🌉 p5.tree.js v0.0.24"]
     p1["🖥️ Renderer3D · Camera · HUD"]
     p2["✨ Shader · Strands · Pipe"]
     p3["🔄 PoseTrack player · lifecycle hooks"]
@@ -128,7 +128,7 @@ flowchart LR
     B["p5.js v2
     Renderer3D · Framebuffer
     Shader · Strands"]
-    C["p5.tree.js v0.0.23
+    C["p5.tree.js v0.0.24
     Keyframes · Spaces
     Pipe · HUD · Uniform UI"]
   end
@@ -267,7 +267,7 @@ p.setup = function () {
   p.createCanvas(600, 340, p.WEBGL)
   p.camera(0, 0, 800, 0, 0, 0, 0, 1, 0)
 
-  track = p.createTrack(p.getCamera())
+  track = p.createCameraTrack(p.getCamera())
   // 📍 record keyframes: eye · center
   track.add({ eye: [   0,   0,  800], center: [0, 0, 0] }) // wide front
   track.add({ eye: [ 400, -120,  200], center: [0, 0, 0] }) // right-front low
@@ -290,7 +290,7 @@ p.draw = function () {
 }
 ```
 
-> `createTrack(cam)` returns a **CameraTrack** — playback applies automatically in `predraw`.  
+> `createCameraTrack(cam)` returns a **CameraTrack** — playback applies automatically in `predraw`.  
 > `orbitControl()` takes over the moment the track is stopped.
 
 ---
@@ -307,7 +307,7 @@ layout: center
 ```js
 p.setup = function () {
   p.createCanvas(600, 340, p.WEBGL)
-  track = p.createTrack()
+  track = p.createPoseTrack()
   // 📍 TRS keyframes — pos · rot (axis-angle) · scl
   track.add({ pos: [0,    0,   0],  scl: [1,   1, 1] })
   track.add({ pos: [160, -60,  80],
@@ -324,7 +324,7 @@ p.setup = function () {
 }
 ```
 
-> `createTrack()` with no argument returns a `PoseTrack`. `rot` accepts **axis-angle**, a raw `[x,y,z,w]` quaternion, or a **look-dir** object — the parser normalises all forms. `onEnd` fires on natural boundary only — not on `stop()` or `reset()`.
+> `createPoseTrack()` with no argument returns a `PoseTrack`. `rot` accepts **axis-angle**, a raw `[x,y,z,w]` quaternion, or a **look-dir** object — the parser normalises all forms. `onEnd` fires on natural boundary only — not on `stop()` or `reset()`.
 ---
 layout: center
 ---
