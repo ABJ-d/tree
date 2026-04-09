@@ -14,13 +14,13 @@ const INIT_UP     = [ -0.53, 0.78, 0.23]
 const sketch = (p) => {
   // ── Per-frame matrix + bounds cache ──────────────────────────────────────
   //
-  // _eBuf — Float32Array(16) filled by eMatrix(_eBuf) = inv(V), inside fbo scope.
-  //   Passed to bounds({ eMatrix: _eBuf }) and viewFrustum({ eMatrix: _eBuf }).
+  // _eBuf — Float32Array(16) filled by mat4Eye(_eBuf) = inv(V), inside fbo scope.
+  //   Passed to bounds({ mat4Eye: _eBuf }) and viewFrustum({ mat4Eye: _eBuf }).
   //
-  // _pBuf — Float32Array(16) filled by pMatrix(_pBuf) = P, inside fbo scope.
-  //   Passed to viewFrustum({ pMatrix: _pBuf }).
+  // _pBuf — Float32Array(16) filled by mat4Proj(_pBuf) = P, inside fbo scope.
+  //   Passed to viewFrustum({ mat4Proj: _pBuf }).
   //
-  // _b    — 6 world-space frustum planes from bounds({ eMatrix: _eBuf }).
+  // _b    — 6 world-space frustum planes from bounds({ mat4Eye: _eBuf }).
   //   Forwarded to all visibility() calls, avoiding 50 frustumPlanes()
   //   recomputations per frame (each involves trig).
 
@@ -34,14 +34,14 @@ const sketch = (p) => {
 
   // ── update() — sets fbo projection/camera, captures matrix + bounds cache ─
   //
-  // Must run inside fbo.begin()…fbo.end() so that eMatrix() and bounds()
+  // Must run inside fbo.begin()…fbo.end() so that mat4Eye() and bounds()
   // operate on the fbo renderer's state.
   //
   // Order is strict:
   //   1. camera()       — writes V
   //   2. frustum/ortho()— writes P
-  //   3. eMatrix(_eBuf) — reads inv(V) into _eBuf  (out-first, zero-alloc)
-  //   4. pMatrix(_pBuf) — reads P into _pBuf        (out-first, zero-alloc)
+  //   3. mat4Eye(_eBuf) — reads inv(V) into _eBuf  (out-first, zero-alloc)
+  //   4. mat4Proj(_pBuf) — reads P into _pBuf        (out-first, zero-alloc)
   //   5. bounds()       — extracts camera basis from _eBuf + projection params,
   //                       calls frustumPlanes() once → _b
   //      Stored and forwarded to all visibility() calls, avoiding 50 redundant
@@ -61,29 +61,29 @@ const sketch = (p) => {
     if (persp) {
       if (aspect) {
         const t = n * Math.tan(sFov.value() / 2)
-        p.frustum(-t*(p.width/p.height), t*(p.width/p.height), t, -t, n, f)
+        p.frustum(-t*(p.width/p.height), t*(p.width/p.height), -t, t, n, f)  // bottom=-t, top=t
       } else {
-        p.frustum(sLeft.value(), sRight.value(), sTop.value(), sBottom.value(), n, f)
+        p.frustum(sLeft.value(), sRight.value(), sBottom.value(), sTop.value(), n, f)
       }
     } else {
       if (aspect) {
         const r = sTop.value() * (p.width / p.height)
         sRight.value(r)
-        p.ortho(-r, r, sTop.value(), -sTop.value(), n, f)
+        p.ortho(-r, r, -sTop.value(), sTop.value(), n, f)
       } else {
-        p.ortho(sLeft.value(), sRight.value(), sTop.value(), sBottom.value(), n, f)
+        p.ortho(sLeft.value(), sRight.value(), sBottom.value(), sTop.value(), n, f)
       }
     }
 
     // Steps 3–5: out-first, no heap allocation.
-    p.eMatrix(_eBuf)
-    p.pMatrix(_pBuf)
+    p.mat4Eye(_eBuf)
+    p.mat4Proj(_pBuf)
 
     // Compute 6 world-space frustum planes once per frame.
     // bounds() extracts camera basis from _eBuf and projection params,
     // then calls frustumPlanes() (trig) once → keyed plane object _b.
     // _b is forwarded to every visibility() call to skip re-derivation.
-    _b = p.bounds({ eMatrix: _eBuf })
+    _b = p.bounds({ mat4Eye: _eBuf })
   }
 
   p.setup = function () {
@@ -194,7 +194,7 @@ const sketch = (p) => {
       p.push()
       p.strokeWeight(3); p.stroke('magenta'); p.fill(1, 0, 1, 0.3)
       p.viewFrustum({
-        eMatrix: _eBuf, pMatrix: _pBuf,
+        mat4Eye: _eBuf, mat4Proj: _pBuf,
         bits:    p5.Tree.NEAR | p5.Tree.FAR,
         viewer:  () => p.axes({ size: 50, bits: p5.Tree.X | p5.Tree._Y | p5.Tree._Z }),
       })

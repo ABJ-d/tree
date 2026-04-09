@@ -25,7 +25,7 @@ const sketch = (p) => {
   const update = () => {
     p.camera(0, 0, cameraZ.value(), 0, 0, cameraZ.value() > 0 ? -300 : 300, 0, 1, 0)
 
-    e = p.eMatrix()
+    e = p.mat4Eye()
 
     if (persp.checked()) {
       if (aspect.checked()) {
@@ -81,7 +81,7 @@ const sketch = (p) => {
       aspect.checked() ? bottomPlane.hide() : bottomPlane.show()
     }
 
-    pm = p.pMatrix()
+    pm = p.mat4Proj()
   }
 
   p.setup = function () {
@@ -249,8 +249,8 @@ const sketch = (p) => {
     p.stroke('magenta')
     p.fill(p.color(1, 0, 1, 0.3))
     p.viewFrustum({
-      eMatrix: e ?? p.createMatrix(4),
-      pMatrix: pm ?? p.createMatrix(4),
+      mat4Eye: e ?? p.createMatrix(4),
+      mat4Proj: pm ?? p.createMatrix(4),
       bits: p5.Tree.NEAR | p5.Tree.FAR,
       viewer: () =>
         p.axes({

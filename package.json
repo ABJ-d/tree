@@ -1,8 +1,8 @@
 {
   "dependencies": {
-    "@slidev/cli": "^52.14.1",
+    "@slidev/cli": "^52.14.2",
     "@slidev/theme-seriph": "^0.25.0",
     "p5": "^2.2.3",
-    "p5.tree": "^0.0.29"
+    "p5.tree": "^0.0.37"
   }
 }
