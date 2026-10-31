@@ -2,7 +2,7 @@
 # try also 'default' to start simple
 theme: seriph
 # new background image
-# background: https://raw.githubusercontent.com/visualcomputing/p5.treegl/main/p5.treegl.png
+# background: https://raw.githubusercontent.com/visualcomputing/p5.treegl/main/p5.tree.png
 background: "p5.tree.png"
 # apply any unocss classes to the current slide
 class: 'text-center'
